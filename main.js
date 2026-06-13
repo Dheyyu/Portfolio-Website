@@ -123,9 +123,10 @@ function initProjectFilter() {
             
             // Show/hide projects based on filter
             projectCards.forEach(card => {
-                const category = card.getAttribute('data-category');
-                
-                if (filter === 'all' || filter === category) {
+                const categories = card.getAttribute('data-category')?.split(/\s+/) || [];
+                const isVisible = filter === 'all' || categories.includes(filter);
+
+                if (isVisible) {
                     card.style.display = 'block';
                     setTimeout(() => {
                         card.style.opacity = '1';
