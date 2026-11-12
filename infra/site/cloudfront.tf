@@ -1,4 +1,9 @@
+locals {
+  s3_origin_id = "s3-${var.site_bucket_name}"
+}
+
 resource "aws_cloudfront_distribution" "website" {
+  default_root_object = "index.html"
   aliases             = [var.domain_name, "www.${var.domain_name}", "*.${var.domain_name}"]
   enabled             = true
   http_version        = "http2"
@@ -17,7 +22,7 @@ resource "aws_cloudfront_distribution" "website" {
     max_ttl                = 0
     min_ttl                = 0
     smooth_streaming       = false
-    target_origin_id       = aws_s3_bucket_website_configuration.website.website_endpoint
+    target_origin_id       = local.s3_origin_id
     trusted_key_groups     = []
     trusted_signers        = []
     viewer_protocol_policy = "redirect-to-https"
@@ -28,17 +33,10 @@ resource "aws_cloudfront_distribution" "website" {
   origin {
     connection_attempts         = 3
     connection_timeout          = 10
-    domain_name                 = aws_s3_bucket_website_configuration.website.website_endpoint
-    origin_id                   = aws_s3_bucket_website_configuration.website.website_endpoint
+    domain_name                 = aws_s3_bucket.website.bucket_regional_domain_name
+    origin_id                   = local.s3_origin_id
+    origin_access_control_id    = aws_cloudfront_origin_access_control.website.id
     response_completion_timeout = 0
-    custom_origin_config {
-      http_port                = 80
-      https_port               = 443
-      origin_keepalive_timeout = 5
-      origin_protocol_policy   = "http-only"
-      origin_read_timeout      = 30
-      origin_ssl_protocols     = ["SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2"]
-    }
   }
   restrictions {
     geo_restriction {
@@ -52,4 +50,12 @@ resource "aws_cloudfront_distribution" "website" {
     minimum_protocol_version       = "TLSv1.2_2021"
     ssl_support_method             = "sni-only"
   }
+}
+
+resource "aws_cloudfront_origin_access_control" "website" {
+  name                              = "${var.site_bucket_name}-oac"
+  description                       = "OAC for the portfolio site bucket"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
 }

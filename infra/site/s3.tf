@@ -48,6 +48,19 @@ resource "aws_s3_bucket_policy" "website" {
           Resource  = "${aws_s3_bucket.website.arn}/*"
           Sid       = "PublicReadForWebsite"
         },
+
+        {
+          Sid       = "AllowCloudFrontOAC"
+          Effect    = "Allow"
+          Principal = { Service = "cloudfront.amazonaws.com" }
+          Action    = "s3:GetObject"
+          Resource  = "${aws_s3_bucket.website.arn}/*"
+          Condition = {
+            StringEquals = {
+              "AWS:SourceArn" = aws_cloudfront_distribution.website.arn
+            }
+          }
+        },
       ]
       Version = "2012-10-17"
     }
