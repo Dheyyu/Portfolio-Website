@@ -9,3 +9,9 @@ variable "site_bucket_name" {
   type        = string
   default     = "oladayo-portfolio-website"
 }
+
+variable "domain_name" {
+  description = "Root domain name for the portfolio website"
+  type        = string
+  default     = "oladayoayorinde.com"
+}
