@@ -1,5 +1,19 @@
 locals {
   s3_origin_id = "s3-${var.site_bucket_name}"
+
+  csp = join("; ", [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
+    "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com",
+    "img-src 'self' data:",
+    "connect-src 'self' https://script.google.com https://script.googleusercontent.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ])
+
 }
 
 resource "aws_cloudfront_distribution" "website" {
@@ -14,18 +28,20 @@ resource "aws_cloudfront_distribution" "website" {
   wait_for_deployment = true
 
   default_cache_behavior {
-    allowed_methods        = ["GET", "HEAD"]
-    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
-    default_ttl            = 0
-    max_ttl                = 0
-    min_ttl                = 0
-    smooth_streaming       = false
-    target_origin_id       = local.s3_origin_id
-    trusted_key_groups     = []
-    trusted_signers        = []
-    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD"]
+    cache_policy_id            = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    default_ttl                = 0
+    max_ttl                    = 0
+    min_ttl                    = 0
+    smooth_streaming           = false
+    target_origin_id           = local.s3_origin_id
+    trusted_key_groups         = []
+    trusted_signers            = []
+    viewer_protocol_policy     = "redirect-to-https"
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.website.id
+
     grpc_config {
       enabled = false
     }
@@ -58,4 +74,46 @@ resource "aws_cloudfront_origin_access_control" "website" {
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
+}
+
+resource "aws_cloudfront_response_headers_policy" "website" {
+  name    = "${var.site_bucket_name}-security-headers"
+  comment = "Security headers for the portfolio site"
+
+  security_headers_config {
+    content_type_options {
+      override = true
+    }
+
+    frame_options {
+      frame_option = "DENY"
+      override     = true
+    }
+
+    referrer_policy {
+      referrer_policy = "strict-origin-when-cross-origin"
+      override        = true
+    }
+
+    strict_transport_security {
+      access_control_max_age_sec = 31536000
+      include_subdomains         = true
+      preload                    = false
+      override                   = true
+    }
+  }
+
+  custom_headers_config {
+    items {
+      header   = "Content-Security-Policy-Report-Only"
+      value    = local.csp
+      override = true
+    }
+    items {
+      header   = "Permissions-Policy"
+      value    = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+      override = true
+    }
+  }
+
 }
