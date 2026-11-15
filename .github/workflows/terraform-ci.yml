@@ -1,0 +1,45 @@
+name: Terraform CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/terraform-ci.yml"
+
+permissions:
+  contents: read            # read-only: CI checks code, it never changes anything
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false      # if bootstrap fails, still finish checking site (see every problem at once)
+      matrix:
+        dir: [infra/bootstrap, infra/site]   # this job runs twice, once per folder, in parallel
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }} # every "run:" step runs inside that folder
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "~1.17.0"       # same pin as versions.tf: CI and laptop match
+
+      - name: Format check
+        run: terraform fmt -check            # fails if any file isn't formatted
+
+      - name: Init (no backend)
+        run: terraform init -backend=false   # downloads providers, never touches S3 state
+
+      - name: Validate
+        run: terraform validate              # catches syntax errors and bad references
+
+      - uses: terraform-linters/setup-tflint@v6
+
+      - name: Lint
+        run: tflint --format compact         # catches unused variables and other smells
