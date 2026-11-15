@@ -6,7 +6,7 @@ on:
 
 permissions:
   contents: read            # read-only: CI checks code, it never changes anything
-  pull_requests: read
+  pull-requests: read
 
 jobs:
   changes:
